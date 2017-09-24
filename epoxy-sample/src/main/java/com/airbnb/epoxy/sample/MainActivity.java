@@ -13,6 +13,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.RecyclerView.RecycledViewPool;
 import android.view.View;
 
+import com.airbnb.epoxy.EpoxyControllerAdapter;
 import com.airbnb.epoxy.EpoxyTouchHelper;
 import com.airbnb.epoxy.EpoxyTouchHelper.DragCallbacks;
 import com.airbnb.epoxy.R;
@@ -71,6 +72,10 @@ public class MainActivity extends AppCompatActivity implements AdapterCallbacks 
     initTouch(recyclerView);
 
     updateController();
+
+    EpoxyControllerAdapter adapter = controller.getAdapter();
+    adapter.notifyItemInserted(0);
+    adapter.notifyItemChanged(0, "hello");
   }
 
   private void initTouch(final RecyclerView recyclerView) {

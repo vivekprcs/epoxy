@@ -140,7 +140,7 @@ public abstract class EpoxyController {
     runInterceptors();
     filterDuplicatesIfNeeded(modelsBeingBuilt);
     modelsBeingBuilt.freeze();
-
+    
     timer.start();
     adapter.setModels(modelsBeingBuilt);
     timer.stop("Models diffed");

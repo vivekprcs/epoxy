@@ -22,7 +22,8 @@ public class Carousel extends RecyclerView {
     super(context, attrs);
 
     // Carousels are generally fixed height. Using fixed size is a small optimization we can make
-    // in that case. This isn't safe to do if the models set in this carousel have varying heights.
+    // in that case. This isn't safe to do if the models set in this carousel have varying heights,
+    // or if the carousel is ever empty.
     setHasFixedSize(true);
 
     // For the example app we use a grid, but in many real world scenarios a simple
