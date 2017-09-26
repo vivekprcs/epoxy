@@ -29,6 +29,7 @@ import javax.lang.model.util.Types;
 
 import static com.airbnb.epoxy.Utils.capitalizeFirstLetter;
 import static com.airbnb.epoxy.Utils.getDefaultValue;
+import static com.airbnb.epoxy.Utils.isFieldPackagePrivate;
 import static com.airbnb.epoxy.Utils.removeSetPrefix;
 
 class ViewAttributeInfo extends AttributeInfo {
@@ -78,7 +79,7 @@ class ViewAttributeInfo extends AttributeInfo {
     generateSetter = true;
     generateGetter = true;
     hasFinalModifier = false;
-    packagePrivate = false;
+    packagePrivate = isFieldPackagePrivate(setterMethod);
     isGenerated = true;
 
     useInHash = !options.contains(Option.DoNotHash);

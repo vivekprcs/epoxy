@@ -24,55 +24,17 @@ public class EpoxyRecyclerView extends RecyclerView {
 
   public EpoxyRecyclerView(Context context) {
     super(context);
-    init();
+    initViewPool();
   }
 
   public EpoxyRecyclerView(Context context, @Nullable AttributeSet attrs) {
     super(context, attrs);
-    init();
+    initViewPool();
   }
 
   public EpoxyRecyclerView(Context context, @Nullable AttributeSet attrs, int defStyle) {
     super(context, attrs, defStyle);
-    init();
-  }
-
-  private void init() {
-
-    // Set a default layout manager if one was not set via xml
-    if (getLayoutManager() == null) {
-      setLayoutManager(createLayoutManager());
-    }
-
     initViewPool();
-  }
-
-  protected LayoutManager createLayoutManager() {
-    ViewGroup.LayoutParams layoutParams = getLayoutParams();
-
-    if (layoutParams.height == LayoutParams.MATCH_PARENT
-        // 0 represents matching constraints in a LinearLayout or ConstraintLayout
-        || layoutParams.height == 0) {
-
-      if (layoutParams.width == LayoutParams.MATCH_PARENT
-          || layoutParams.width == 0) {
-        // If we are filling as much space as possible then we usually are fixed size
-        setHasFixedSize(true);
-      }
-
-      // A sane default is a vertically scrolling linear layout
-      return new LinearLayoutManager(getContext());
-    } else {
-      // We are assuming this is the "carousel" case - a nested horizontal scrolling view.
-
-      // Carousels generally go edge to edge. Clip to padding is turned off
-      // so the previous and next views in the list "peek" from the edges.
-      setClipToPadding(false);
-
-      // This is usually the case for horizontally scrolling carousels and should be a sane
-      // default
-      return new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
-    }
   }
 
   private void initViewPool() {
@@ -107,6 +69,7 @@ public class EpoxyRecyclerView extends RecyclerView {
     setRecycledViewPool(poolToUse.viewPool);
   }
 
+
   protected RecycledViewPool createViewPool() {
     return new UnboundedViewPool();
   }
@@ -114,6 +77,50 @@ public class EpoxyRecyclerView extends RecyclerView {
   public boolean isAutoSharingViewPoolAcrossContext() {
     return true;
   }
+
+
+  @Override
+  public void setLayoutParams(ViewGroup.LayoutParams params) {
+    boolean isFirstParams = getLayoutParams() == null;
+    super.setLayoutParams(params);
+
+    if (isFirstParams) {
+      // Set a default layout manager if one was not set via xml
+      // We need layout params for this to guess at the right size and type
+      if (getLayoutManager() == null) {
+        setLayoutManager(createLayoutManager());
+      }
+    }
+  }
+
+  protected LayoutManager createLayoutManager() {
+    ViewGroup.LayoutParams layoutParams = getLayoutParams();
+
+    if (layoutParams.height == LayoutParams.MATCH_PARENT
+        // 0 represents matching constraints in a LinearLayout or ConstraintLayout
+        || layoutParams.height == 0) {
+
+      if (layoutParams.width == LayoutParams.MATCH_PARENT
+          || layoutParams.width == 0) {
+        // If we are filling as much space as possible then we usually are fixed size
+        setHasFixedSize(true);
+      }
+
+      // A sane default is a vertically scrolling linear layout
+      return new LinearLayoutManager(getContext());
+    } else {
+      // We are assuming this is the "carousel" case - a nested horizontal scrolling view.
+
+      // Carousels generally go edge to edge. Clip to padding is turned off
+      // so the previous and next views in the list "peek" from the edges.
+      setClipToPadding(false);
+
+      // This is usually the case for horizontally scrolling carousels and should be a sane
+      // default
+      return new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
+    }
+  }
+
 
   @Override
   public void setLayoutManager(LayoutManager layout) {
