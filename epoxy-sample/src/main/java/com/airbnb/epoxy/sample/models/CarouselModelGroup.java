@@ -2,12 +2,15 @@ package com.airbnb.epoxy.sample.models;
 
 import android.support.v7.widget.RecyclerView.RecycledViewPool;
 
+import com.airbnb.epoxy.CarouselModel_;
 import com.airbnb.epoxy.EpoxyModel;
 import com.airbnb.epoxy.EpoxyModelGroup;
 import com.airbnb.epoxy.R;
 import com.airbnb.epoxy.sample.CarouselData;
 import com.airbnb.epoxy.sample.ColorData;
 import com.airbnb.epoxy.sample.SampleController.AdapterCallbacks;
+import com.airbnb.epoxy.sample.views.GridCarousel;
+import com.airbnb.epoxy.sample.views.GridCarouselModel_;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,8 +64,7 @@ public class CarouselModelGroup extends EpoxyModelGroup {
           }));
     }
 
-    models.add(new CarouselModel_()
-        .recycledViewPool(recycledViewPool)
+    models.add(new GridCarouselModel_()
         .models(colorModels));
 
     return models;

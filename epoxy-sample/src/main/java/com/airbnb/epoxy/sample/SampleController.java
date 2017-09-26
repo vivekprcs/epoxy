@@ -70,7 +70,7 @@ public class SampleController extends TypedEpoxyController<List<CarouselData>> {
 
     for (int i = 0; i < carousels.size(); i++) {
       CarouselData carousel = carousels.get(i);
-      add(new CarouselModelGroup(carousel, callbacks, recycledViewPool));
+//      add(new CarouselModelGroup(carousel, callbacks, recycledViewPool));
     }
   }
 
