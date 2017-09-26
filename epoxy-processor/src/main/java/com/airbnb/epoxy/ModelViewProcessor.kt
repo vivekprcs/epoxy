@@ -254,8 +254,12 @@ internal class ModelViewProcessor(
     /** Include props and reset methods from super class views.  */
     private fun updateViewsForInheritedViewAnnotations() {
         for (view in modelClassMap.values) {
-            var superViewClass = view.viewElement.superclass
 
+            // We walk up the super class tree and look for any elements with epoxy annotations.
+            // This approach lets us capture views that we've already processed as well as views
+            // in other libraries that we wouldn't have otherwise processed.
+
+            var superViewClass = view.viewElement.superclass
             while (superViewClass.kind == TypeKind.DECLARED) {
                 val superViewElement = types.asElement(superViewClass) as TypeElement
                 val samePackage = belongToTheSamePackage(view.viewElement, superViewElement,
