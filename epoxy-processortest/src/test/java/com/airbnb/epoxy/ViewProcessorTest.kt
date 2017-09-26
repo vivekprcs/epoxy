@@ -701,8 +701,12 @@ class ViewProcessorTest {
 
     @Test
     fun testModelViewInheritsFromSuperClass() {
-        assertGeneration("AutoLayoutModelViewMatchParent.java",
-                         "AutoLayoutModelViewMatchParentModel_.java")
+        assertViewsHaveModelsGenerated("ModelViewSuperClass.java",
+                                       "ModelViewExtendingSuperClass.java")
+    }
+
+    fun assertViewsHaveModelsGenerated(vararg viewFiles: String) {
+        assertGeneration(viewFiles.toList(), viewFiles.map { it.replace(".", "Model_.") })
     }
 
     companion object {
