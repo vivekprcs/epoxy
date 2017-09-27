@@ -1,10 +1,8 @@
 package com.airbnb.epoxy.sample.views;
 
 import android.content.Context;
-import android.support.annotation.Nullable;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
-import android.util.AttributeSet;
 
 import com.airbnb.epoxy.Carousel;
 import com.airbnb.epoxy.ModelView;

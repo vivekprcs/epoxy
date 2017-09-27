@@ -99,6 +99,8 @@ class ViewAttributeInfo extends AttributeInfo {
     VariableElement paramElement = param;
     assignNullability(paramElement, typeMirror);
 
+    // TODO: (eli_hart 9/26/17) Get the javadoc on the super method if this setter overrides
+    // something and doesn't have its own javadoc
     createJavaDoc(elements.getDocComment(setterMethod), codeToSetDefault,
         constantFieldNameForDefaultValue,
         modelInfo.viewElement, typeMirror, viewSetterMethodName);

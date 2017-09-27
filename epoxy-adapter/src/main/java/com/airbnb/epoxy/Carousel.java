@@ -1,9 +1,12 @@
 package com.airbnb.epoxy;
 
 import android.content.Context;
+import android.support.annotation.DimenRes;
+import android.support.annotation.Dimension;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -12,8 +15,34 @@ import com.airbnb.viewmodeladapter.R;
 
 import java.util.List;
 
+/**
+ * <i>This feature is in Beta - please report bugs, feature requests, or other feedback at
+ * https://github.com/airbnb/epoxy by creating a new issue. Thanks!</i>
+ * <p>
+ * This is intended as a plug and play "Carousel" view - a Recyclerview with horizontal scrolling.
+ * It comes with common defaults and performance optimizations and can be either used as a top level
+ * RecyclerView, or nested within a vertical recyclerview.
+ * <p>
+ * This class provides:
+ * <p>
+ * 1. Automatic integration with Epoxy. A {@link CarouselModel_} is generated from this class, which
+ * you can use in your EpoxyController. Just call {@link #setModels(List)} to provide the list of
+ * models to show in the carousel.
+ * <p>
+ * 2. Default horizontal padding for carousel peeking, and an easy way to change this padding -
+ * {@link #setCarouselPadding(int)}
+ * <p>
+ * 3. Easily control how many items are shown on screen in the carousel at a time - {@link
+ * #setNumViewsToShowOnScreen(float)}
+ * <p>
+ * 4. All of the benefits of {@link EpoxyRecyclerView}
+ * <p>
+ * If you need further flexibility you can subclass this view to change its width, height, scrolling
+ * direction, etc. You can annotate a subclass with {@link ModelView} to generate a new EpoxyModel.
+ */
 @ModelView(saveViewState = true, autoLayout = Size.MATCH_WIDTH_WRAP_HEIGHT)
 public class Carousel extends EpoxyRecyclerView {
+  private static int defaultPaddingDp = 16;
 
   private float numViewsToShowOnScreen;
 
@@ -37,19 +66,24 @@ public class Carousel extends EpoxyRecyclerView {
   }
 
   /**
-   * Set the number of views to show on screen in the RecyclerView at a time, partial numbers are
+   * Set the number of views to show on screen in this carousel at a time, partial numbers are
    * allowed.
    * <p>
-   * This is useful for nested RecyclerViews, where you want to easily control for the number of
-   * items on screen, regardless of screen size. For example, you could set this to 1.2f so that one
-   * view is shown in full 20% of the next view "peeks" from the edge to indicate that there is more
-   * content to scroll to.
+   * This is useful where you want to easily control for the number of items on screen, regardless
+   * of screen size. For example, you could set this to 1.2f so that one view is shown in full and
+   * 20% of the next view "peeks" from the edge to indicate that there is more content to scroll
+   * to.
    * <p>
+   * Another pattern is setting a different view count depending on whether the device is phone or
+   * tablet.
    * <p>
-   * If a LinearLayoutManager is used this value will be forwarded to {@link
-   * LinearLayoutManager#setInitialPrefetchItemCount(int)}.
+   * Additionally, if a LinearLayoutManager is used this value will be forwarded to {@link
+   * LinearLayoutManager#setInitialPrefetchItemCount(int)} as a performance optimization.
+   * <p>
+   * If you want to change the prefetch count without changing the view size you can simply use
+   * {@link #setInitialPrefetchItemCount(int)}
    */
-  @ModelProp
+  @ModelProp(group = "prefetch")
   public void setNumViewsToShowOnScreen(float viewCount) {
     // The model's default is 0, ignore it in that case
     // 0 doesn't make sense as a user defined value
@@ -59,10 +93,23 @@ public class Carousel extends EpoxyRecyclerView {
       }
 
       numViewsToShowOnScreen = viewCount;
+      setInitialPrefetchItemCount((int) Math.ceil(viewCount));
+    }
+  }
+
+  /**
+   * If you are using a Linear or Grid layout manager you can use this to set the item prefetch
+   * count. Only use this if you are not using {@link #setNumViewsToShowOnScreen(float)}
+   *
+   * @see #setNumViewsToShowOnScreen(float)
+   * @see LinearLayoutManager#setInitialPrefetchItemCount(int)
+   */
+  @ModelProp(group = "prefetch")
+  public void setInitialPrefetchItemCount(int numItemsToPrefetch) {
+    if (numItemsToPrefetch != 0) { // Ignore the default prop value when the user did not set one
       LayoutManager layoutManager = getLayoutManager();
       if (layoutManager instanceof LinearLayoutManager) {
-        ((LinearLayoutManager) layoutManager).setInitialPrefetchItemCount(
-            (int) Math.ceil(viewCount));
+        ((LinearLayoutManager) layoutManager).setInitialPrefetchItemCount(numItemsToPrefetch);
       }
     }
   }
@@ -113,6 +160,44 @@ public class Carousel extends EpoxyRecyclerView {
         params.width = (int) initialWidth;
         // No need to request layout since the view is unbound and not attached to window
       }
+    }
+  }
+
+  /**
+   * Set a DP value to use as the default padding value on each side of every carousel.
+   * <p>
+   * The default is {@link #defaultPaddingDp}
+   *
+   * @see #setCarouselPadding(int)
+   */
+  public static void setDefaultCarouselPadding(@Dimension(unit = Dimension.DP) int paddingDp) {
+    defaultPaddingDp = paddingDp;
+  }
+
+  /**
+   * Set a dimension resource to specify the padding value to use on each side of the carousel.
+   * <p>
+   * If a resource is not set the padding will default to {@link #defaultPaddingDp} dp.
+   * Alternatively you can specify a custom global default with {@link
+   * #setDefaultCarouselPadding(int)}
+   */
+  @ModelProp
+  public void setCarouselPadding(@DimenRes int paddingRes) {
+    if (paddingRes == 0) {
+      int px = (int) TypedValue
+          .applyDimension(TypedValue.COMPLEX_UNIT_DIP, defaultPaddingDp,
+              getResources().getDisplayMetrics());
+      setPaddingInScrollDirection(px);
+    } else {
+      setPaddingInScrollDirection(getResources().getDimensionPixelOffset(paddingRes));
+    }
+  }
+
+  private void setPaddingInScrollDirection(int paddingPx) {
+    if (getLayoutManager().canScrollHorizontally()) {
+      setPadding(paddingPx, getPaddingTop(), paddingPx, getPaddingBottom());
+    } else {
+      setPadding(getPaddingLeft(), paddingPx, getPaddingRight(), paddingPx);
     }
   }
 

@@ -12,7 +12,6 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
-import com.airbnb.epoxy.EpoxyControllerAdapter;
 import com.airbnb.epoxy.EpoxyRecyclerView;
 import com.airbnb.epoxy.EpoxyTouchHelper;
 import com.airbnb.epoxy.EpoxyTouchHelper.DragCallbacks;
@@ -48,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements AdapterCallbacks 
 
     recyclerView.addItemDecoration(new VerticalGridCardSpacingDecoration());
     recyclerView.setItemAnimator(new SampleItemAnimator());
-    recyclerView.setEpoxyController(controller);
+    recyclerView.setController(controller);
 
     if (savedInstanceState != null) {
       carousels = savedInstanceState.getParcelableArrayList(CAROUSEL_DATA_KEY);

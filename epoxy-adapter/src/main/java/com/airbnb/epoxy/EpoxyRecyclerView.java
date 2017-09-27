@@ -16,9 +16,40 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
+/**
+ * <i>This feature is in Beta - please report bugs, feature requests, or other feedback at
+ * https://github.com/airbnb/epoxy by creating a new issue. Thanks!</i>
+ * <p>
+ * A RecyclerView implementation that makes for easier integration with Epoxy. The goal of this
+ * class is to reduce boilerplate in setting up a RecyclerView by applying common defaults.
+ * Additionally, several performance optimizations are made.
+ * <p>
+ * Improvements in this class are:
+ * <p>
+ * 1. A single view pool is automatically shared between all {@link EpoxyRecyclerView} instances in
+ * the same activity. This should increase view recycling potential and increase performance. See
+ * {@link #initViewPool()}.
+ * <p>
+ * 2. A layout manager is automatically added with sane defaults. See {@link
+ * #createLayoutManager()}
+ * <p>
+ * 3. Fixed size is enabled if this view's size is MATCH_PARENT
+ * <p>
+ * 4. If a {@link GridLayoutManager} is used this will automatically sync the span count with the
+ * {@link EpoxyController}. See {@link #syncSpanCount()}
+ * <p>
+ * 5. Helper methods like {@link #setModels(List)}, {@link #buildModelsWith(ModelBuilderCallback)}
+ * make it simpler to set up simple RecyclerViews.
+ * <p>
+ * 6. Set an EpoxyController and build models in one step -
+ * {@link #setControllerAndBuildModels(EpoxyController)}
+ * (EpoxyController)}
+ * <p>
+ * 7. Defaults for usage as a nested recyclerview are provided in {@link Carousel}.
+ */
 public class EpoxyRecyclerView extends RecyclerView {
 
-  static final List<PoolReference> RECYCLER_POOLS = new ArrayList<>(5);
+  private static final List<PoolReference> RECYCLER_POOLS = new ArrayList<>(5);
 
   private EpoxyController epoxyController;
 
@@ -37,6 +68,13 @@ public class EpoxyRecyclerView extends RecyclerView {
     initViewPool();
   }
 
+  /**
+   * Get or create a view pool to use for this RecyclerView. By default the same pool is shared for
+   * all {@link EpoxyRecyclerView} usages in the same Activity.
+   *
+   * @see #createViewPool()
+   * @see #isAutoSharingViewPoolAcrossContext()
+   */
   private void initViewPool() {
     if (!isAutoSharingViewPoolAcrossContext()) {
       setRecycledViewPool(createViewPool());
@@ -69,15 +107,22 @@ public class EpoxyRecyclerView extends RecyclerView {
     setRecycledViewPool(poolToUse.viewPool);
   }
 
-
+  /**
+   * Create a new instance of a view pool to use with this recyclerview. By default a {@link
+   * UnboundedViewPool} is used.
+   */
   protected RecycledViewPool createViewPool() {
     return new UnboundedViewPool();
   }
 
+  /**
+   * To maximize view recycling by default we share the same view pool across all {@link
+   * EpoxyRecyclerView} instances in the same Activity. This behavior can be disabled by returning
+   * false here.
+   */
   public boolean isAutoSharingViewPoolAcrossContext() {
     return true;
   }
-
 
   @Override
   public void setLayoutParams(ViewGroup.LayoutParams params) {
@@ -93,6 +138,19 @@ public class EpoxyRecyclerView extends RecyclerView {
     }
   }
 
+  /**
+   * Create a new {@link android.support.v7.widget.RecyclerView.LayoutManager} instance to use for
+   * this RecyclerView.
+   * <p>
+   * By default a LinearLayoutManager is used, and a reasonable default is chosen for scrolling
+   * direction based on layout params.
+   * <p>
+   * If the RecyclerView is set to match parent size then the scrolling orientation is set to
+   * vertical and {@link #setHasFixedSize(boolean)} is set to true.
+   * <p>
+   * If the height is set to wrap_content then the scrolling orientation is set to horizontal, and
+   * {@link #setClipToPadding(boolean)} is set to false.
+   */
   protected LayoutManager createLayoutManager() {
     ViewGroup.LayoutParams layoutParams = getLayoutParams();
 
@@ -121,7 +179,6 @@ public class EpoxyRecyclerView extends RecyclerView {
     }
   }
 
-
   @Override
   public void setLayoutManager(LayoutManager layout) {
     super.setLayoutManager(layout);
@@ -130,24 +187,143 @@ public class EpoxyRecyclerView extends RecyclerView {
 
   /**
    * If a grid layout manager is set we sync the span count between the layout and the epoxy
-   * adapter.
+   * adapter automatically.
    */
   private void syncSpanCount() {
-    LayoutManager layoutManager = getLayoutManager();
-    if (layoutManager instanceof GridLayoutManager && epoxyController != null) {
-      epoxyController.setSpanCount(((GridLayoutManager) layoutManager).getSpanCount());
-      ((GridLayoutManager) layoutManager).setSpanSizeLookup(epoxyController.getSpanSizeLookup());
+    LayoutManager layout = getLayoutManager();
+    if (layout instanceof GridLayoutManager && epoxyController != null) {
+      GridLayoutManager grid = (GridLayoutManager) layout;
+
+      if (epoxyController.getSpanCount() != grid.getSpanCount()
+          || grid.getSpanSizeLookup() != epoxyController.getSpanSizeLookup()) {
+        epoxyController.setSpanCount(grid.getSpanCount());
+        grid.setSpanSizeLookup(epoxyController.getSpanSizeLookup());
+      }
     }
   }
 
+  @Override
+  public void requestLayout() {
+    // Grid layout manager calls this when the span count is changed. Its the easiest way to
+    // detect a span change and update our controller accordingly.
+    syncSpanCount();
+    super.requestLayout();
+  }
+
+  /**
+   * Set a list of {@link EpoxyModel}'s to show in this RecyclerView.
+   * <p>
+   * Alternatively you can set an {@link EpoxyController} to handle building models dynamically.
+   *
+   * @see #setController(EpoxyController)
+   * @see #setControllerAndBuildModels(EpoxyController)
+   * @see #buildModelsWith(ModelBuilderCallback)
+   */
+
   public void setModels(List<? extends EpoxyModel<?>> models) {
     if (!(epoxyController instanceof SimpleEpoxyController)) {
-      setEpoxyController(new SimpleEpoxyController());
+      setController(new SimpleEpoxyController());
     }
 
     ((SimpleEpoxyController) epoxyController).setModels(models);
   }
 
+  /**
+   * Set an EpoxyController to populate this RecyclerView. This does not make the controller build
+   * its models, that must be done separately via {@link #requestModelBuild()}.
+   * <p>
+   * Use this if you don't want {@link #requestModelBuild()} called automatically. Common cases
+   * are if you are using {@link TypedEpoxyController} (in which case you must call setData on the
+   * controller), or if you have not otherwise populated your controller's data yet.
+   * <p>
+   * Otherwise if you want models built automatically for you use {@link
+   * #setControllerAndBuildModels(EpoxyController)}
+   *
+   * @see #setControllerAndBuildModels(EpoxyController)
+   * @see #buildModelsWith(ModelBuilderCallback)
+   * @see #setModels(List)
+   */
+
+  public void setController(EpoxyController controller) {
+    epoxyController = controller;
+    setAdapter(controller.getAdapter());
+    syncSpanCount();
+  }
+
+  /**
+   * Set an EpoxyController to populate this RecyclerView, and tell the controller to build
+   * models.
+   *
+   * @see #setController(EpoxyController)
+   * @see #buildModelsWith(ModelBuilderCallback)
+   * @see #setModels(List)
+   */
+  public void setControllerAndBuildModels(EpoxyController controller) {
+    controller.requestModelBuild();
+    setController(controller);
+  }
+
+  /**
+   * Allows you to build models via a callback instead of needing to create a new EpoxyController
+   * class. This is useful if your models are simple and you would like to simply declare them in
+   * your activity/fragment.
+   * <p>
+   * Another useful pattern is having your Activity or Fragment implement {@link
+   * ModelBuilderCallback}.
+   *
+   * @see #setController(EpoxyController)
+   * @see #setControllerAndBuildModels(EpoxyController)
+   * @see #setModels(List)
+   */
+  public void buildModelsWith(final ModelBuilderCallback callback) {
+    setControllerAndBuildModels(new EpoxyController() {
+      @Override
+      protected void buildModels() {
+        callback.buildModels(this);
+      }
+    });
+  }
+
+  /**
+   * A callback for creating models without needing a custom EpoxyController class. Used with {@link
+   * #buildModelsWith(ModelBuilderCallback)}
+   */
+  public interface ModelBuilderCallback {
+    /**
+     * Analagous to {@link EpoxyController#buildModels()}. You should create new model instances and
+     * add them to the given controller. {@link AutoModel} cannot be used with models added this
+     * way.
+     */
+    void buildModels(EpoxyController controller);
+  }
+
+  /**
+   * Request that the currently set EpoxyController has its models rebuilt. You can use this to
+   * avoid saving your controller as a field.
+   * <p>
+   * You cannot use this if your controller is a {@link TypedEpoxyController} or if you set
+   * models via {@link #setModels(List)}. In that case you must set data directly on the
+   * controller or set models again.
+   */
+  public void requestModelBuild() {
+    if (epoxyController == null) {
+      throw new IllegalStateException("A controller must be set before requesting a model build.");
+    }
+
+    if (epoxyController instanceof SimpleEpoxyController) {
+      throw new IllegalStateException("Models were set with #setModels, they can not be rebuilt.");
+    }
+
+    epoxyController.requestModelBuild();
+  }
+
+  /**
+   * Clear the currently set EpoxyController as well as any models that are displayed.
+   * <p>
+   * Any pending requests to the EpoxyController to build models are canceled.
+   * <p>
+   * Any existing child views are recycled to the view pool.
+   */
   public void clear() {
     if (epoxyController == null) {
       return;
@@ -161,72 +337,6 @@ public class EpoxyRecyclerView extends RecyclerView {
     // 'removeAndRecycleExistingViews=true' is used in case this is a nested recyclerview
     // and we want to recycle the views back to a shared view pool
     swapAdapter(null, true);
-  }
-
-  /**
-   * Set an EpoxyController to populate this RecyclerView. This does not make the controller build
-   * its models, that must be done separately via {@link #requestModelBuild()}.
-   * <p>
-   * Use this if you don't want {@link #requestModelBuild()} called automatically. Common cases
-   * are
-   * if you are using {@link TypedEpoxyController} (in which case you must call setData on the
-   * controller), or if you have not otherwise populated your controllers data yet.
-   * <p>
-   * Otherwise if you want models built automatically for you use {@link
-   * #setEpoxyControllerAndBuildModels(EpoxyController)}
-   *
-   * @see #setEpoxyControllerAndBuildModels(EpoxyController)
-   */
-
-  public void setEpoxyController(EpoxyController controller) {
-    epoxyController = controller;
-    setAdapter(controller.getAdapter());
-    syncSpanCount();
-  }
-
-  /**
-   * Set an EpoxyController to populate this RecyclerView, and tell the controller to build
-   * models.
-   */
-  public void setEpoxyControllerAndBuildModels(EpoxyController controller) {
-    controller.requestModelBuild();
-    setEpoxyController(controller);
-  }
-
-  public interface ModelBuilderCallback {
-    void buildModels(EpoxyController controller);
-  }
-
-  /**
-   * Allows you to build models via a callback instead of needing to create a new EpoxyController
-   * class. This is useful if your models are simple and you would like to simply declare them in
-   * your activity/fragment.
-   * <p>
-   * Another useful pattern is having your Activity or Fragment implement {@link
-   * ModelBuilderCallback}.
-   */
-  public void buildModelsWith(final ModelBuilderCallback callback) {
-    setEpoxyControllerAndBuildModels(new EpoxyController() {
-      @Override
-      protected void buildModels() {
-        callback.buildModels(this);
-      }
-    });
-  }
-
-  /**
-   * Request that the currently set EpoxyController has its models rebuilt. You can use this to
-   * avoid saving your controller as a field.
-   * <p>
-   * You cannot use this if you the controller is a {@link TypedEpoxyController}. In that case
-   * you must set data directly on the controller.
-   */
-  public void requestModelBuild() {
-    if (epoxyController == null) {
-      throw new IllegalStateException("A controller must be set before requesting a model build.");
-    }
-
-    epoxyController.requestModelBuild();
   }
 
   private static class PoolReference {
