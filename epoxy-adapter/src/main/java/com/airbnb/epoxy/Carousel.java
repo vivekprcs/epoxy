@@ -5,6 +5,7 @@ import android.support.annotation.DimenRes;
 import android.support.annotation.Dimension;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.LinearSnapHelper;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.View;
@@ -42,12 +43,14 @@ import java.util.List;
  */
 @ModelView(saveViewState = true, autoLayout = Size.MATCH_WIDTH_WRAP_HEIGHT)
 public class Carousel extends EpoxyRecyclerView {
-  private static int defaultPaddingDp = 16;
+
 
   private float numViewsToShowOnScreen;
 
   public Carousel(Context context) {
     super(context);
+    new LinearSnapHelper().attachToRecyclerView(this);
+
   }
 
   public Carousel(Context context,
@@ -123,15 +126,13 @@ public class Carousel extends EpoxyRecyclerView {
       int childMargin = 0;
       if (childLayoutParams instanceof MarginLayoutParams) {
         MarginLayoutParams marginLayoutParams = (MarginLayoutParams) childLayoutParams;
-        childMargin = (marginLayoutParams.leftMargin + marginLayoutParams.rightMargin) / 2;
+        childMargin = marginLayoutParams.leftMargin + marginLayoutParams.rightMargin;
       }
-      float totalChildMargin = 2 * numViewsToShowOnScreen * childMargin;
 
       boolean isScrollingHorizontally = getLayoutManager().canScrollHorizontally();
-
-      float spaceForChildren = getViewSizeInDirection(isScrollingHorizontally) - totalChildMargin;
-
-      int itemSizeInScrollingDirection = Math.round(spaceForChildren / numViewsToShowOnScreen);
+      int itemSizeInScrollingDirection =
+          ((int) (getSpaceForChildren(isScrollingHorizontally) / numViewsToShowOnScreen)
+              - childMargin);
 
       if (isScrollingHorizontally) {
         childLayoutParams.width = itemSizeInScrollingDirection;
@@ -143,12 +144,37 @@ public class Carousel extends EpoxyRecyclerView {
     }
   }
 
-  private int getViewSizeInDirection(boolean horizontal) {
+  private int getSpaceForChildren(boolean horizontal) {
     if (horizontal) {
-      return getWidth() - getPaddingLeft() - getPaddingRight();
+      return getTotalWidthPx(this)
+          - getPaddingLeft()
+          - (getClipToPadding() ? getPaddingRight() : 0);
+      // If child views will be showing through padding than we include just one side of padding
+      // since when the list is at position 0 only the child towards the end of the list will show
+      // through the padding.
     } else {
-      return getHeight() - getPaddingTop() - getPaddingBottom();
+      return getTotalHeightPx(this)
+          - getPaddingTop()
+          - (getClipToPadding() ? getPaddingBottom() : 0);
     }
+  }
+
+  private static int getTotalWidthPx(View view) {
+    if (view.getWidth() > 0) {
+      // Can only get a width if we are laid out
+      return view.getWidth();
+    }
+
+    // Fall back to measured height
+    return view.getMeasuredWidth();
+  }
+
+  private static int getTotalHeightPx(View view) {
+    if (view.getHeight() > 0) {
+      return view.getHeight();
+    }
+
+    return view.getMeasuredHeight();
   }
 
   @Override
@@ -164,22 +190,9 @@ public class Carousel extends EpoxyRecyclerView {
   }
 
   /**
-   * Set a DP value to use as the default padding value on each side of every carousel.
-   * <p>
-   * The default is {@link #defaultPaddingDp}
-   *
-   * @see #setCarouselPadding(int)
-   */
-  public static void setDefaultCarouselPadding(@Dimension(unit = Dimension.DP) int paddingDp) {
-    defaultPaddingDp = paddingDp;
-  }
-
-  /**
    * Set a dimension resource to specify the padding value to use on each side of the carousel.
    * <p>
-   * If a resource is not set the padding will default to {@link #defaultPaddingDp} dp.
-   * Alternatively you can specify a custom global default with {@link
-   * #setDefaultCarouselPadding(int)}
+   * If a resource is not set the padding will default to
    */
   @ModelProp
   public void setCarouselPadding(@DimenRes int paddingRes) {
@@ -193,13 +206,6 @@ public class Carousel extends EpoxyRecyclerView {
     }
   }
 
-  private void setPaddingInScrollDirection(int paddingPx) {
-    if (getLayoutManager().canScrollHorizontally()) {
-      setPadding(paddingPx, getPaddingTop(), paddingPx, getPaddingBottom());
-    } else {
-      setPadding(getPaddingLeft(), paddingPx, getPaddingRight(), paddingPx);
-    }
-  }
 
   @ModelProp
   public void setModels(List<? extends EpoxyModel<?>> models) {

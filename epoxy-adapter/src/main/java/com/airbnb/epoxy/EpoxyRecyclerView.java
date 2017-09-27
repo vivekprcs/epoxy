@@ -1,12 +1,16 @@
 package com.airbnb.epoxy;
 
 import android.content.Context;
+import android.support.annotation.DimenRes;
+import android.support.annotation.Dimension;
 import android.support.annotation.Nullable;
+import android.support.annotation.Px;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
 import android.util.SparseArray;
+import android.util.TypedValue;
 import android.view.ViewGroup;
 
 import java.lang.ref.WeakReference;
@@ -51,20 +55,45 @@ public class EpoxyRecyclerView extends RecyclerView {
 
   private static final List<PoolReference> RECYCLER_POOLS = new ArrayList<>(5);
 
+  private static boolean addPaddingInScrollDirectionByDefault = true;
+  @Dimension(unit = Dimension.DP) private static int defaultPaddingInScrollDirectionDp = 8;
+
+  private static boolean enableItemSpacingByDefault = true;
+  @Dimension(unit = Dimension.DP)
+  private static int defaultSpacingBetweenItemsDp = defaultPaddingInScrollDirectionDp;
+  private boolean itemSpacingEnabled = enableItemSpacingByDefault;
+  private boolean hasSetCustomItemSpacingAmount;
+  protected final EpoxyItemSpacingDecorator spacingDecorator = new EpoxyItemSpacingDecorator();
+
   private EpoxyController epoxyController;
 
   public EpoxyRecyclerView(Context context) {
     super(context);
-    initViewPool();
+    init();
   }
 
   public EpoxyRecyclerView(Context context, @Nullable AttributeSet attrs) {
     super(context, attrs);
-    initViewPool();
+    init();
   }
 
   public EpoxyRecyclerView(Context context, @Nullable AttributeSet attrs, int defStyle) {
     super(context, attrs, defStyle);
+    init();
+  }
+
+  private void init() {
+    setClipToPadding(false);
+    if (addPaddingInScrollDirectionByDefault) {
+      setPaddingInScrollDirectionDp(defaultPaddingInScrollDirectionDp);
+    }
+
+    setItemSpacingDp(defaultSpacingBetweenItemsDp);
+    hasSetCustomItemSpacingAmount = false;
+    if (itemSpacingEnabled) {
+      addItemDecoration(spacingDecorator);
+    }
+
     initViewPool();
   }
 
@@ -167,12 +196,6 @@ public class EpoxyRecyclerView extends RecyclerView {
       // A sane default is a vertically scrolling linear layout
       return new LinearLayoutManager(getContext());
     } else {
-      // We are assuming this is the "carousel" case - a nested horizontal scrolling view.
-
-      // Carousels generally go edge to edge. Clip to padding is turned off
-      // so the previous and next views in the list "peek" from the edges.
-      setClipToPadding(false);
-
       // This is usually the case for horizontally scrolling carousels and should be a sane
       // default
       return new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
@@ -208,6 +231,103 @@ public class EpoxyRecyclerView extends RecyclerView {
     // detect a span change and update our controller accordingly.
     syncSpanCount();
     super.requestLayout();
+  }
+
+  public static void addPaddingInScrollDirectionByDefault(boolean addPaddingInScrollDirection) {
+    addPaddingInScrollDirectionByDefault = addPaddingInScrollDirection;
+  }
+
+  /**
+   * Set a DP value to use as the default padding value in the scroll direction of every
+   * RecyclerView.
+   * <p>
+   * The default is {@link #defaultPaddingInScrollDirectionDp}
+   */
+  public static void setDefaultPaddingInScrollDirection(
+      @Dimension(unit = Dimension.DP) int paddingDp) {
+    defaultPaddingInScrollDirectionDp = paddingDp;
+  }
+
+  /**
+   * Set a dimension resource to use as the padding value in the scrolling direction of this
+   * RecyclerView.
+   *
+   * @see #setPaddingInScrollDirectionPx(int)
+   */
+  public void setPaddingInScrollDirectionRes(@DimenRes int paddingRes) {
+    setPaddingInScrollDirectionPx(getResources().getDimensionPixelOffset(paddingRes));
+  }
+
+  /**
+   * Set a DP amount to use as the padding value in the scrolling direction of this
+   * RecyclerView.
+   *
+   * @see #setPaddingInScrollDirectionPx(int)
+   */
+  public void setPaddingInScrollDirectionDp(@Dimension(unit = Dimension.DP) int paddingDp) {
+    setPaddingInScrollDirectionPx(dpToPx(paddingDp));
+  }
+
+  /**
+   * Set a pixel amount to use as padding in the scrolling direction of this
+   * RecyclerView.
+   * <p>
+   * For example, if this is scrolling vertically then the top and bottom padding will be set. If
+   * horizontally, the left and right padding will be set.
+   * <p>
+   * The default is {@link #defaultPaddingInScrollDirectionDp} dp.
+   * <p>
+   * Alternatively you can specify a custom global default with {@link
+   * #setDefaultPaddingInScrollDirection(int)}
+   */
+  public void setPaddingInScrollDirectionPx(@Px int paddingPx) {
+    if (getLayoutManager().canScrollHorizontally()) {
+      setPadding(paddingPx, getPaddingTop(), paddingPx, getPaddingBottom());
+    } else {
+      setPadding(getPaddingLeft(), paddingPx, getPaddingRight(), paddingPx);
+    }
+    if (!hasSetCustomItemSpacingAmount && paddingPx > 0) {
+      // Default to using the same spacing between items as padding on edges
+      setItemSpacingPx(paddingPx);
+      hasSetCustomItemSpacingAmount = false;
+    }
+  }
+
+  public static void setItemSpacingEnabledByDefault(boolean enableItemSpacingByDefault) {
+    EpoxyRecyclerView.enableItemSpacingByDefault = enableItemSpacingByDefault;
+  }
+
+  public void enableItemSpacing(boolean enableItemSpacing) {
+    if (this.itemSpacingEnabled == enableItemSpacing) {
+      return;
+    }
+
+    this.itemSpacingEnabled = enableItemSpacing;
+    if (enableItemSpacing) {
+      addItemDecoration(spacingDecorator);
+    } else {
+      removeItemDecoration(spacingDecorator);
+    }
+  }
+
+  public static void setDefaultItemSpacingDp(@Dimension(unit = Dimension.DP) int dp) {
+    defaultSpacingBetweenItemsDp = dp;
+  }
+
+  public void setItemSpacingRes(@DimenRes int itemSpacingRes) {
+    setItemSpacingPx(getResources().getDimensionPixelOffset(itemSpacingRes));
+  }
+
+  public void setItemSpacingDp(@Dimension(unit = Dimension.DP) int dp) {
+    setItemSpacingPx(dpToPx(dp));
+  }
+
+  public void setItemSpacingPx(@Px int spacingPx) {
+    boolean valueChanged = spacingDecorator.setPxBetweenItems(spacingPx);
+    hasSetCustomItemSpacingAmount = true;
+    if (valueChanged && itemSpacingEnabled) {
+      invalidateItemDecorations();
+    }
   }
 
   /**
@@ -337,6 +457,13 @@ public class EpoxyRecyclerView extends RecyclerView {
     // 'removeAndRecycleExistingViews=true' is used in case this is a nested recyclerview
     // and we want to recycle the views back to a shared view pool
     swapAdapter(null, true);
+  }
+
+  @Px
+  private int dpToPx(@Dimension(unit = Dimension.DP) int dp) {
+    return (int) TypedValue
+        .applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp,
+            getResources().getDisplayMetrics());
   }
 
   private static class PoolReference {

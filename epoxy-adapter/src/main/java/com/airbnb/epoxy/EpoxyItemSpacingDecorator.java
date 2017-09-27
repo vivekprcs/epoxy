@@ -1,6 +1,7 @@
-package com.airbnb.epoxy.sample;
+package com.airbnb.epoxy;
 
 import android.graphics.Rect;
+import android.support.annotation.Px;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.GridLayoutManager.SpanSizeLookup;
 import android.support.v7.widget.LinearLayoutManager;
@@ -14,7 +15,7 @@ import android.view.View;
  * Modifies item spacing in a recycler view so that items are equally spaced no matter where they
  * are on the grid. Only designed to work with standard linear or grid layout managers.
  */
-public class VerticalGridCardSpacingDecoration extends ItemDecoration {
+public class EpoxyItemSpacingDecorator extends ItemDecoration {
   private int innerPaddingPx;
   private boolean layoutReversed;
   private boolean verticallyScrolling;
@@ -23,8 +24,19 @@ public class VerticalGridCardSpacingDecoration extends ItemDecoration {
   private int position;
   private Rect outRect;
 
-  public void setPxBetweenItems(int pxBetweenItems) {
-    innerPaddingPx = pxBetweenItems / 2;
+  public EpoxyItemSpacingDecorator() {
+    this(0);
+  }
+
+  public EpoxyItemSpacingDecorator(@Px int pxBetweenItems) {
+    setPxBetweenItems(pxBetweenItems);
+  }
+
+  public boolean setPxBetweenItems(@Px int pxBetweenItems) {
+    int newSpacing = pxBetweenItems / 2;
+    boolean changed = newSpacing != innerPaddingPx;
+    innerPaddingPx = newSpacing;
+    return changed;
   }
 
   @Override
