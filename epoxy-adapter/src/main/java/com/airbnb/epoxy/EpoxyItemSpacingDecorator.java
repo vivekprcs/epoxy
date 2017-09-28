@@ -39,6 +39,11 @@ public class EpoxyItemSpacingDecorator extends ItemDecoration {
     return changed;
   }
 
+  @Px
+  public int getPxBetweenItems() {
+    return innerPaddingPx * 2;
+  }
+
   @Override
   public void getItemOffsets(Rect outRect, View view, RecyclerView parent, State state) {
     // Zero everything out for the common case
@@ -93,7 +98,7 @@ public class EpoxyItemSpacingDecorator extends ItemDecoration {
     if (verticallyScrolling) {
       if (firstItem) {
         if (layoutReversed) {
-          outRect.bottom = innerPaddingPx;
+          outRect.top = innerPaddingPx;
         } else {
           outRect.bottom = innerPaddingPx;
         }
@@ -117,8 +122,12 @@ public class EpoxyItemSpacingDecorator extends ItemDecoration {
     int spanCount = layout.getSpanCount();
     int spanIndex = spanSizeLookup.getSpanIndex(position, spanCount);
 
-    boolean lastItemInRow = spanIndex == spanCount - 1;
+    int endSpanIndex = spanIndex + spanSize;
     boolean firstItemInRow = spanIndex == 0;
+    boolean lastItemInRow = endSpanIndex == spanCount
+        || position == itemCount - 1 // last item in list
+        // next item doesn't fit in row
+        || endSpanIndex + spanSizeLookup.getSpanSize(position + 1) > spanCount;
     boolean layoutReversed = layout.getReverseLayout();
 
     // From Gridlayoutmanager
@@ -127,7 +136,7 @@ public class EpoxyItemSpacingDecorator extends ItemDecoration {
     // 0 if the layout is <b>LTR</b> and <b>rightmost</b> span is span 0 if the layout is
     // <b>RTL</b>. Prior to 24.2.0, it was the opposite
 
-    if (spanSize == spanCount) {
+    if (firstItemInRow && lastItemInRow) {
       // Only item in row.
     } else if (firstItemInRow) {
       if (verticallyScrolling) {
@@ -227,7 +236,7 @@ public class EpoxyItemSpacingDecorator extends ItemDecoration {
   private static boolean isInLastRow(int position, int itemCount, SpanSizeLookup spanSizeLookup,
       int spanCount) {
     int totalSpan = 0;
-    for (int i = itemCount - 1; i >= position; i++) {
+    for (int i = itemCount - 1; i >= position; i--) {
       totalSpan += spanSizeLookup.getSpanSize(i);
       if (totalSpan > spanCount) {
         return false;

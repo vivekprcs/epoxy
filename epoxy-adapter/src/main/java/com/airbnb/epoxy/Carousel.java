@@ -5,9 +5,7 @@ import android.support.annotation.DimenRes;
 import android.support.annotation.Dimension;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.LinearSnapHelper;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -30,8 +28,8 @@ import java.util.List;
  * you can use in your EpoxyController. Just call {@link #setModels(List)} to provide the list of
  * models to show in the carousel.
  * <p>
- * 2. Default horizontal padding for carousel peeking, and an easy way to change this padding -
- * {@link #setCarouselPadding(int)}
+ * 2. Default padding for carousel peeking, and an easy way to change this padding -
+ * {@link #setPaddingDp(int)}
  * <p>
  * 3. Easily control how many items are shown on screen in the carousel at a time - {@link
  * #setNumViewsToShowOnScreen(float)}
@@ -43,14 +41,14 @@ import java.util.List;
  */
 @ModelView(saveViewState = true, autoLayout = Size.MATCH_WIDTH_WRAP_HEIGHT)
 public class Carousel extends EpoxyRecyclerView {
+  public static final int NO_VALUE_SET = -1;
 
-
+  @Dimension(unit = Dimension.DP)
+  private static int defaultSpacingBetweenItemsDp = 8;
   private float numViewsToShowOnScreen;
 
   public Carousel(Context context) {
     super(context);
-    new LinearSnapHelper().attachToRecyclerView(this);
-
   }
 
   public Carousel(Context context,
@@ -60,6 +58,17 @@ public class Carousel extends EpoxyRecyclerView {
 
   public Carousel(Context context, @Nullable AttributeSet attrs, int defStyle) {
     super(context, attrs, defStyle);
+  }
+
+  @Override
+  protected void init() {
+    super.init();
+    // When used as a model the padding can't be set via xml so we set it programmatically
+    int defaultPaddingDp = getDefaultSpacingBetweenItemsDp();
+    if (defaultPaddingDp >= 0) {
+      setPaddingDp(defaultPaddingDp);
+      setItemSpacingDp(defaultPaddingDp);
+    }
   }
 
   @ModelProp
@@ -123,16 +132,16 @@ public class Carousel extends EpoxyRecyclerView {
       ViewGroup.LayoutParams childLayoutParams = child.getLayoutParams();
       child.setTag(R.id.epoxy_recycler_view_child_initial_size_id, childLayoutParams.width);
 
-      int childMargin = 0;
-      if (childLayoutParams instanceof MarginLayoutParams) {
-        MarginLayoutParams marginLayoutParams = (MarginLayoutParams) childLayoutParams;
-        childMargin = marginLayoutParams.leftMargin + marginLayoutParams.rightMargin;
+      int spaceBetweenItems = 0;
+      if (isItemSpacingEnabled()) {
+        // The item decoration space is not counted in the width of the view
+        spaceBetweenItems = (int) (spacingDecorator.getPxBetweenItems() * numViewsToShowOnScreen);
       }
 
       boolean isScrollingHorizontally = getLayoutManager().canScrollHorizontally();
       int itemSizeInScrollingDirection =
-          ((int) (getSpaceForChildren(isScrollingHorizontally) / numViewsToShowOnScreen)
-              - childMargin);
+          (int) ((getSpaceForChildren(isScrollingHorizontally) - spaceBetweenItems)
+              / numViewsToShowOnScreen);
 
       if (isScrollingHorizontally) {
         childLayoutParams.width = itemSizeInScrollingDirection;
@@ -189,23 +198,34 @@ public class Carousel extends EpoxyRecyclerView {
     }
   }
 
+  public static void setDefaultItemSpacingDp(@Dimension(unit = Dimension.DP) int dp) {
+    defaultSpacingBetweenItemsDp = dp;
+  }
+
+  @Override
+  @Dimension(unit = Dimension.DP)
+  protected int getDefaultSpacingBetweenItemsDp() {
+    return defaultSpacingBetweenItemsDp;
+  }
+
   /**
    * Set a dimension resource to specify the padding value to use on each side of the carousel.
    * <p>
    * If a resource is not set the padding will default to
    */
-  @ModelProp
-  public void setCarouselPadding(@DimenRes int paddingRes) {
-    if (paddingRes == 0) {
-      int px = (int) TypedValue
-          .applyDimension(TypedValue.COMPLEX_UNIT_DIP, defaultPaddingDp,
-              getResources().getDisplayMetrics());
-      setPaddingInScrollDirection(px);
-    } else {
-      setPaddingInScrollDirection(getResources().getDimensionPixelOffset(paddingRes));
-    }
+  @ModelProp(group = "padding")
+  public void setPaddingRes(@DimenRes int paddingRes) {
+    int px = resToPx(paddingRes);
+    setPadding(px, px, px, px);
+    setItemSpacingPx(px);
   }
 
+  @ModelProp(defaultValue = "NO_VALUE_SET", group = "padding")
+  public void setPaddingDp(@Dimension(unit = Dimension.DP) int paddingDp) {
+    int px = dpToPx(paddingDp != NO_VALUE_SET ? paddingDp : getDefaultSpacingBetweenItemsDp());
+    setPadding(px, px, px, px);
+    setItemSpacingPx(px);
+  }
 
   @ModelProp
   public void setModels(List<? extends EpoxyModel<?>> models) {

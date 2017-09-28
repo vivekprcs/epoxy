@@ -8,18 +8,17 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.annotation.ColorInt;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
-import com.airbnb.epoxy.CarouselModel_;
+import com.airbnb.epoxy.Carousel;
 import com.airbnb.epoxy.EpoxyRecyclerView;
 import com.airbnb.epoxy.EpoxyTouchHelper;
 import com.airbnb.epoxy.EpoxyTouchHelper.DragCallbacks;
 import com.airbnb.epoxy.R;
 import com.airbnb.epoxy.sample.SampleController.AdapterCallbacks;
 import com.airbnb.epoxy.sample.models.CarouselModelGroup;
-import com.airbnb.epoxy.sample.models.ColorModel_;
-import com.airbnb.epoxy.sample.views.HeaderViewModel_;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,43 +40,24 @@ public class MainActivity extends AppCompatActivity implements AdapterCallbacks 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    Carousel.setDefaultItemSpacingDp(30);
+    EpoxyRecyclerView.setDefaultItemSpacingDp(0);
+    EpoxyRecyclerView.setItemSpacingEnabledByDefault(false);
     setContentView(R.layout.activity_main);
 
     EpoxyRecyclerView recyclerView = (EpoxyRecyclerView) findViewById(R.id.recycler_view);
 
-    recyclerView.buildModelsWith(controller1 -> {
-      new HeaderViewModel_()
-          .id("header")
-          .title("hello world")
-          .caption("afsd")
-          .addTo(controller1);
+    recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
 
-      List<ColorModel_> colorModels = new ArrayList<>();
-      for (int i = 0; i < 50; i++) {
-        colorModels.add(new ColorModel_()
-            .id(i)
-            .color(Color.RED));
-      }
-      new CarouselModel_()
-          .id("carousel")
-          .models(colorModels)
-          .numViewsToShowOnScreen(3.5f)
-          .addTo(controller1);
-    });
+    recyclerView.setController(controller);
 
-//    recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
-//
-//    recyclerView.addItemDecoration(new VerticalGridCardSpacingDecoration());
-//    recyclerView.setItemAnimator(new SampleItemAnimator());
-//    recyclerView.setController(controller);
-//
-//    if (savedInstanceState != null) {
-//      carousels = savedInstanceState.getParcelableArrayList(CAROUSEL_DATA_KEY);
-//    }
-//
-//    initTouch(recyclerView);
-//
-//    updateController();
+    if (savedInstanceState != null) {
+      carousels = savedInstanceState.getParcelableArrayList(CAROUSEL_DATA_KEY);
+    }
+
+    initTouch(recyclerView);
+
+    updateController();
   }
 
   private void initTouch(final RecyclerView recyclerView) {
