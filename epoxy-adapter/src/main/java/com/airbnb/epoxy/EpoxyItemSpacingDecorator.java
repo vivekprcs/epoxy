@@ -2,6 +2,7 @@ package com.airbnb.epoxy;
 
 import android.graphics.Rect;
 import android.support.annotation.Px;
+import android.support.v4.view.ViewCompat;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.GridLayoutManager.SpanSizeLookup;
 import android.support.v7.widget.LinearLayoutManager;
@@ -21,8 +22,20 @@ public class EpoxyItemSpacingDecorator extends ItemDecoration {
   private boolean verticallyScrolling;
   private boolean horizontallyScrolling;
   private int itemCount;
+  boolean firstItem;
+  boolean lastItem;
   private int position;
   private Rect outRect;
+  private boolean grid;
+
+  private int spanSize;
+  private int spanCount;
+  private int spanIndex;
+  private int endSpanIndex;
+  private boolean isFirstItemInRow;
+  private boolean fillsLastSpan;
+  private boolean isInFirstRow;
+  private boolean isInLastRow;
 
   public EpoxyItemSpacingDecorator() {
     this(0);
@@ -57,168 +70,97 @@ public class EpoxyItemSpacingDecorator extends ItemDecoration {
     }
 
     itemCount = parent.getAdapter().getItemCount();
+    firstItem = position == 0;
+    lastItem = position == itemCount - 1;
     LayoutManager layout = parent.getLayoutManager();
     horizontallyScrolling = layout.canScrollHorizontally();
     verticallyScrolling = layout.canScrollVertically();
-    layoutReversed =
+    grid = layout instanceof GridLayoutManager;
+
+    if (grid) {
+      GridLayoutManager grid = (GridLayoutManager) layout;
+      final SpanSizeLookup spanSizeLookup = grid.getSpanSizeLookup();
+      spanSize = spanSizeLookup.getSpanSize(position);
+      spanCount = grid.getSpanCount();
+      spanIndex = spanSizeLookup.getSpanIndex(position, spanCount);
+      isFirstItemInRow = spanIndex == 0;
+      fillsLastSpan = spanIndex + spanSize == spanCount;
+      isInFirstRow = isInFirstRow(position, spanSizeLookup, spanCount);
+      isInLastRow =
+          !isInFirstRow && isInLastRow(position, itemCount, spanSizeLookup, spanCount);
+    }
+
+    layoutReversed = shouldReverseLayout(layout, horizontallyScrolling);
+
+    boolean left = getLeftPadding();
+    boolean right = getRightPadding();
+    boolean top = getTopPadding();
+    boolean bottom = getBottomPadding();
+
+    if (layoutReversed) {
+      if (horizontallyScrolling) {
+        boolean temp = left;
+        left = right;
+        right = temp;
+      } else {
+        boolean temp = top;
+        top = bottom;
+        bottom = temp;
+      }
+    }
+
+    outRect.right = right ? innerPaddingPx : 0;
+    outRect.left = left ? innerPaddingPx : 0;
+    outRect.top = top ? innerPaddingPx : 0;
+    outRect.bottom = bottom ? innerPaddingPx : 0;
+  }
+
+  private static boolean shouldReverseLayout(LayoutManager layout, boolean horizontallyScrolling) {
+    boolean reverseLayout =
         layout instanceof LinearLayoutManager && ((LinearLayoutManager) layout).getReverseLayout();
-
-    if (layout instanceof GridLayoutManager) {
-      assignForGrid(((GridLayoutManager) layout));
-    } else {
-      assignForLinearLayout();
+    boolean rtl = layout.getLayoutDirection() == ViewCompat.LAYOUT_DIRECTION_RTL;
+    if (horizontallyScrolling && rtl) {
+      // This is how linearlayout checks if it should reverse layout in #resolveShouldLayoutReverse
+      reverseLayout = !reverseLayout;
     }
+
+    return reverseLayout;
   }
 
-  private void assignForLinearLayout() {
-    boolean firstItem = position == 0;
-    boolean lastItem = position == itemCount - 1;
-
-    // We assume there is just one row.
-    // Does not support staggered grid or custom layout managers
-    if (horizontallyScrolling) {
-      if (firstItem) {
-        if (layoutReversed) {
-          outRect.left = innerPaddingPx;
-        } else {
-          outRect.right = innerPaddingPx;
-        }
-      } else if (lastItem) {
-        if (layoutReversed) {
-          outRect.right = innerPaddingPx;
-        } else {
-          outRect.left = innerPaddingPx;
-        }
-      } else {
-        outRect.left = innerPaddingPx;
-        outRect.right = innerPaddingPx;
-      }
+  private boolean getBottomPadding() {
+    if (grid) {
+      return (horizontallyScrolling && !fillsLastSpan)
+          || (verticallyScrolling && !isInLastRow);
     }
 
-    if (verticallyScrolling) {
-      if (firstItem) {
-        if (layoutReversed) {
-          outRect.top = innerPaddingPx;
-        } else {
-          outRect.bottom = innerPaddingPx;
-        }
-      } else if (lastItem) {
-        if (layoutReversed) {
-          outRect.bottom = innerPaddingPx;
-        } else {
-          outRect.top = innerPaddingPx;
-        }
-      } else {
-        outRect.top = innerPaddingPx;
-        outRect.bottom = innerPaddingPx;
-      }
-    }
+    return verticallyScrolling && !lastItem;
   }
 
-  private void assignForGrid(GridLayoutManager layout) {
-    final SpanSizeLookup spanSizeLookup = layout.getSpanSizeLookup();
-
-    int spanSize = spanSizeLookup.getSpanSize(position);
-    int spanCount = layout.getSpanCount();
-    int spanIndex = spanSizeLookup.getSpanIndex(position, spanCount);
-
-    int endSpanIndex = spanIndex + spanSize;
-    boolean firstItemInRow = spanIndex == 0;
-    boolean lastItemInRow = endSpanIndex == spanCount
-        || position == itemCount - 1 // last item in list
-        // next item doesn't fit in row
-        || endSpanIndex + spanSizeLookup.getSpanSize(position + 1) > spanCount;
-    boolean layoutReversed = layout.getReverseLayout();
-
-    // From Gridlayoutmanager
-    // Starting with RecyclerView <b>24.2.0</b>, span indices are always indexed from position 0
-    // even if the layout is RTL. In a vertical GridLayoutManager, <b>leftmost</b> span is span
-    // 0 if the layout is <b>LTR</b> and <b>rightmost</b> span is span 0 if the layout is
-    // <b>RTL</b>. Prior to 24.2.0, it was the opposite
-
-    if (firstItemInRow && lastItemInRow) {
-      // Only item in row.
-    } else if (firstItemInRow) {
-      if (verticallyScrolling) {
-        if (layoutReversed) {
-          outRect.left = innerPaddingPx;
-        } else {
-          outRect.right = innerPaddingPx;
-        }
-      } else {
-        if (layoutReversed) {
-          outRect.top = innerPaddingPx;
-        } else {
-          outRect.bottom = innerPaddingPx;
-        }
-      }
-    } else if (lastItemInRow) {
-      // Last item in row
-      if (verticallyScrolling) {
-        if (layoutReversed) {
-          outRect.right = innerPaddingPx;
-        } else {
-          outRect.left = innerPaddingPx;
-        }
-      } else {
-        if (layoutReversed) {
-          outRect.bottom = innerPaddingPx;
-        } else {
-          outRect.top = innerPaddingPx;
-        }
-      }
-    } else {
-      // Inner item (not relevant for less than three columns)
-      if (verticallyScrolling) {
-        outRect.left = innerPaddingPx;
-        outRect.right = innerPaddingPx;
-      } else {
-        outRect.top = innerPaddingPx;
-        outRect.bottom = innerPaddingPx;
-      }
+  private boolean getTopPadding() {
+    if (grid) {
+      return (horizontallyScrolling && !isFirstItemInRow)
+          || (verticallyScrolling && !isInFirstRow);
     }
 
-    boolean isInFirstRow = isInFirstRow(position, spanSizeLookup, spanCount);
-    boolean isInLastRow =
-        !isInFirstRow && isInLastRow(position, itemCount, spanSizeLookup, spanCount);
+    return verticallyScrolling && !firstItem;
+  }
 
-    if (isInFirstRow) {
-      if (verticallyScrolling) {
-        if (layoutReversed) {
-          outRect.top = innerPaddingPx;
-        } else {
-          outRect.bottom = innerPaddingPx;
-        }
-      } else {
-        if (layoutReversed) {
-          outRect.left = innerPaddingPx;
-        } else {
-          outRect.right = innerPaddingPx;
-        }
-      }
-    } else if (isInLastRow) {
-      if (verticallyScrolling) {
-        if (layoutReversed) {
-          outRect.bottom = innerPaddingPx;
-        } else {
-          outRect.top = innerPaddingPx;
-        }
-      } else {
-        if (layoutReversed) {
-          outRect.right = innerPaddingPx;
-        } else {
-          outRect.left = innerPaddingPx;
-        }
-      }
-    } else {
-      if (verticallyScrolling) {
-        outRect.top = innerPaddingPx;
-        outRect.bottom = innerPaddingPx;
-      } else {
-        outRect.left = innerPaddingPx;
-        outRect.right = innerPaddingPx;
-      }
+  private boolean getRightPadding() {
+    if (grid) {
+      return (horizontallyScrolling && !isInLastRow)
+          || (verticallyScrolling && !fillsLastSpan);
     }
+
+    return horizontallyScrolling && !lastItem;
+  }
+
+  private boolean getLeftPadding() {
+    if (grid) {
+      return (horizontallyScrolling && !isInFirstRow)
+          || (verticallyScrolling && !isFirstItemInRow);
+    }
+
+    return horizontallyScrolling && !firstItem;
   }
 
   private static boolean isInFirstRow(int position, SpanSizeLookup spanSizeLookup, int spanCount) {

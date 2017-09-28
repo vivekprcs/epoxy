@@ -46,28 +46,28 @@ public class MainActivity extends AppCompatActivity implements AdapterCallbacks 
     setContentView(R.layout.activity_main);
 
     EpoxyRecyclerView recyclerView = (EpoxyRecyclerView) findViewById(R.id.recycler_view);
-    GridLayoutManager layout =
-        new GridLayoutManager(this, 3, GridLayoutManager.VERTICAL, true);
-    recyclerView.setLayoutManager(layout);
-
-    List<ColorModel_> models = new ArrayList<>();
-    for (int i = 0; i < 2; i++) {
-      models.add(new ColorModel_().color(Color.RED).id(i));
-    }
-
-    recyclerView.setModels(models);
-
-//    recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+//    GridLayoutManager layout =
+//        new GridLayoutManager(this, 3, GridLayoutManager.HORIZONTAL, true);
+//    recyclerView.setLayoutManager(layout);
 //
-//    recyclerView.setController(controller);
-//
-//    if (savedInstanceState != null) {
-//      carousels = savedInstanceState.getParcelableArrayList(CAROUSEL_DATA_KEY);
+//    List<ColorModel_> models = new ArrayList<>();
+//    for (int i = 0; i < 9; i++) {
+//      models.add(new ColorModel_().color(Color.RED).id(i));
 //    }
 //
-//    initTouch(recyclerView);
-//
-//    updateController();
+//    recyclerView.setModels(models);
+
+    recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+
+    recyclerView.setController(controller);
+
+    if (savedInstanceState != null) {
+      carousels = savedInstanceState.getParcelableArrayList(CAROUSEL_DATA_KEY);
+    }
+
+    initTouch(recyclerView);
+
+    updateController();
   }
 
   private void initTouch(final RecyclerView recyclerView) {
