@@ -12,13 +12,13 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
-import com.airbnb.epoxy.Carousel;
 import com.airbnb.epoxy.EpoxyRecyclerView;
 import com.airbnb.epoxy.EpoxyTouchHelper;
 import com.airbnb.epoxy.EpoxyTouchHelper.DragCallbacks;
 import com.airbnb.epoxy.R;
 import com.airbnb.epoxy.sample.SampleController.AdapterCallbacks;
 import com.airbnb.epoxy.sample.models.CarouselModelGroup;
+import com.airbnb.epoxy.sample.models.ColorModel_;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,24 +40,34 @@ public class MainActivity extends AppCompatActivity implements AdapterCallbacks 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    Carousel.setDefaultItemSpacingDp(30);
-    EpoxyRecyclerView.setDefaultItemSpacingDp(0);
-    EpoxyRecyclerView.setItemSpacingEnabledByDefault(false);
+//    Carousel.setDefaultItemSpacingDp(30);
+//    EpoxyRecyclerView.setDefaultItemSpacingDp(0);
+//    EpoxyRecyclerView.setItemSpacingEnabledByDefault(false);
     setContentView(R.layout.activity_main);
 
     EpoxyRecyclerView recyclerView = (EpoxyRecyclerView) findViewById(R.id.recycler_view);
+    GridLayoutManager layout =
+        new GridLayoutManager(this, 3, GridLayoutManager.VERTICAL, true);
+    recyclerView.setLayoutManager(layout);
 
-    recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
-
-    recyclerView.setController(controller);
-
-    if (savedInstanceState != null) {
-      carousels = savedInstanceState.getParcelableArrayList(CAROUSEL_DATA_KEY);
+    List<ColorModel_> models = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      models.add(new ColorModel_().color(Color.RED).id(i));
     }
 
-    initTouch(recyclerView);
+    recyclerView.setModels(models);
 
-    updateController();
+//    recyclerView.setLayoutManager(new GridLayoutManager(this, 2));
+//
+//    recyclerView.setController(controller);
+//
+//    if (savedInstanceState != null) {
+//      carousels = savedInstanceState.getParcelableArrayList(CAROUSEL_DATA_KEY);
+//    }
+//
+//    initTouch(recyclerView);
+//
+//    updateController();
   }
 
   private void initTouch(final RecyclerView recyclerView) {
